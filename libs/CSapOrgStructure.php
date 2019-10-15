@@ -1,93 +1,64 @@
 <?php
-/*
- *
- * Оргструктура из такого:
-<item>
-     <Seqnr>71</Seqnr> - номер узла в дереве
-     <Objid>10000304</Objid> - идентификатор подразделения (использвется для синхронизации со структурой в портале)
-     <Orgtx>Бухгалтерия</Orgtx> - имя подразделения
-     <Pdown>0</Pdown> - Дочерний узел, хз зачем он, ведь дочерних несколько а тут только одно значение. Я не использую
-     <Pup>22</Pup> - Родительский узел. Используется для выстраивания дерева
-</item>
- *
- */
-
-require_once 'COrgStructureStorage.php';
+require_once "COrgStructureStorage.php";
 
 /*
  * Класс для взаимодействия структурой из САП
  * в контексте этого скритпа - данные САП опорные, и только для чтения
+ * ВНИМАНИЕ файл не поддерживается в актуальном состоянии, т.к. нет на текущий момент источника данных типа SAP
  */
-class CSQLOrgStructure extends COrgStructureStorage{
-
-	private $db=null;
-
+class CSapOrgStructure extends COrgStructureStorage{
+	
 	/*
 	 * Ссылка на внешний объект CbxOrgStructure
 	 * нужен для проверки соответствия
 	 */
 	private $bx=null;
-
-	/*
-	 * Ссылка на внешний объект CC1UserList
-    * нужен для проверки соответствия
-    */
-	private $users=null;
-
+	
 	/*
 	 * прицепляет объет битрикс структуры для взаимодейстивия с ним
 	 * @param CbxOrgStructure $bx объект структуры подразделений в битриксе
 	 */
-	public function attachBx(CBxOrgStructure &$bx){$this->bx=$bx;}
-
-
+	public function attachBx(CbxOrgStructure &$bx){$this->bx=$bx;}
+	
 	/*
-	 * Грузит данные из SQL
+	 * Грузит данные из XML файла
 	 * @param string $filename файл для загрузки
 	 * @return bool успех загрузки данных
 	 */
-	public function loadFromSQL($path,$user,$pwd,$db){
-		$this->db = new mysqli($path,$user,$pwd,$db);
-		$req_sql = 'set names "utf8"';
-		$this->db->query($req_sql);
-
-		$res_obj=$this->db->query('select * from org_struct');
-		if (is_object($res_obj)) while (is_array($res=$res_obj->fetch_assoc())){
-			$wcount_obj=$this->db->query("select count(id) as wcount from users where (Uvolen=0) and (not TRIM(Login)='') and (Orgeh='${res['id']}')");
-			$res['wcount']=null;
-			if (is_object($wcount_obj)) {
-				$wcount_arr=$wcount_obj->fetch_assoc();
-				if (is_array($wcount_arr)&&isset($wcount_arr['wcount'])) $res['wcount']=$wcount_arr['wcount'];
-			}
-			$this->data[$res['id']]=$res;
-		}
-		//echo count($this->data)." items loaded in SQL Org storage\n";
+	public function loadFromXml($filename){
+		$this->data=COrgStructureStorage::loadFromXml($filename,'OOrgStruct','Objid');
+		//echo count($this->data)." items loaded in SAP Org storage\n";
 		//var_dump($this->data);
 		return is_array($this->data);
 	}
 
-
+	/*
+	 * Грузит данные из JSON файла
+	 * @param string $filename файл для загрузки
+	 * @return bool успех загрузки данных
+	 */
+	public function loadFromJson($filename){
+		$this->data=COrgStructureStorage::loadFromJson($filename,'OOrgStruct','Objid');
+		//echo count($this->data)." items loaded in SAP Org storage\n";
+		//var_dump($this->data);
+		return is_array($this->data);
+	}
+	
 	/*
 	 * Ищет родительский элемент для $id
 	 * @param string $id, чей родитель нас интересует
 	 * @return string идентификатор родтельского для $id элемента или null, если родителя нет
 	 */
 	public function getParent($id){
-		return $this->getItemField($id,'pup',null);
+		//обнаруживаем есть ли у элемента id чтото в поле pup
+		//там должен идентификатор seqnr родительского элемента
+		if(($parent=$this->getItemField($id,'Pup',0))==0) return null;
+		
+		//если есть, то ищем id элемента, у которого это значение в поле seqnr
+		//echo "Parent [".$this->findIdBy('Seqnr',$parent).'] <-- ['.$id."]\n";
+		return $this->findIdBy('Seqnr',$parent);
 	}
-
-	/*
-	 * Ищет родительский элемент для $id
-	 * @param string $id, чей родитель нас интересует
-	 * @return string идентификатор родтельского для $id элемента или null, если родителя нет
-	 */
-	public function getChilds($id){
-		$childs=[];
-		foreach ($this->getIds() as $itemid)
-			if ($this->getItemField($itemid,'pup',null)==$id) $childs[]=$itemid;
-		return $childs;
-	}
-
+	
 	/*
 	 * проверяет наличие указанного подразделения в битриксе
 	 * при отсутствии автоматически пытается такое подразделение добавить
@@ -103,25 +74,16 @@ class CSQLOrgStructure extends COrgStructureStorage{
 		
 		//если есть предок - проверяем сначала его, ибо проверять можно только от корня
 		if (!is_null($parent=$this->getParent($id)))
-			//если предок установлен в 'NULL' то мы его не проверяем, т.к. это указание на корень
+			if (!$this->ckBxItemExist($parent)) return null;
+			
+			//если в структуре битрикса такого подразделения нет - косяк
+			//собственно ради этого момента и вся проверка)
 			if (
-				$parent!='NULL'
-				&&
-				!$this->ckBxItemExist($parent)
-			)  {
-				//die('not exist parent( ['.$parent.']');
-				return false;
-			}
-		//если в структуре битрикса такого подразделения нет - косяк
-		//собственно ради этого момента и вся проверка)
-		//var_dump($this->bxGenFields($id));
-		//die('adding item');
-		if (
 			is_null($bxID=$this->bx->findIDBy('CODE',$id))&&	//не нашли
 			is_null($bxID=$this->bx->addItem($this->bxGenFields($id))) //и создать не получилось
-		)  return null;
-
-		return $this->data[$id]['bx_item_id']=$bxID;
+			) return null;
+			
+			return $this->data[$id]['bx_item_id']=$bxID;
 	}
 	
 	/*
@@ -131,33 +93,21 @@ class CSQLOrgStructure extends COrgStructureStorage{
 	 * @return bool
 	 */
 	public function ckBxItemFields($id){
-		//echo('checking '.$id."\n");
 		//если битрикс не подключен - работать не можем
 		if (is_null($this->bx)) die('No bx object attached!');
 		
 		//если уже проверен - значит все ок
 		if ($this->getItemField($id,'checked_bxfields_ok')) return true;
 		
-		//если есть предок - проверяем сначала его, ибо проверять можно только от корня
-		if (!is_null($parent=$this->getParent($id))) {
-			//если предок установлен в 'NULL' то мы его не проверяем, т.к. это указание на корень
-			if (
-				$parent!='NULL'
-				&&
-				!$this->ckBxItemFields($parent)
-			) {
-				//die('parent( ['.$parent.']');
-				return false;
-			}
-		}
-
 		//находим идентификатор в битриксе
 		if (is_null($bxID = $this->ckBxItemExist($id))) return false;
-
-		//var_dump($this->bxGenFields($id));
-		//die('correcting fields');
-		//возвращаем и кэшируем проверку (с учетом попытки исправления) полей в битриксе
-		return $this->data[$id]['checked_bxfields_ok']=$this->bx->correctItem($bxID, $this->bxGenFields($id));
+		
+		//если есть предок - проверяем сначала его, ибо проверять можно только от корня
+		if (!is_null($parent=$this->getParent($id)))
+			if (!$this->ckBxItemFields($parent)) return false;
+			
+			//возвращаем и кэшируем проверку (с учетом попытки исправления) полей в битриксе
+			return $this->data[$id]['checked_bxfields_ok']=$this->bx->correctItem($bxID, $this->bxGenFields($id));
 	}
 	
 	/*
@@ -166,12 +116,13 @@ class CSQLOrgStructure extends COrgStructureStorage{
 	 * @return array список полей с заполненными значениями, которые должны быть в битриксе
 	 */
 	public function bxGenFields($id){
-		//die('generating fields for '.$id);
-		return $this->bx->bxGenFields(
-			$id,
-			$this->getItemField($id,'name'),
-			$this->getParent($id)
-		) ;
+		return Array(
+				"ACTIVE" => 'Y',
+				"IBLOCK_ID" => $this->bx->getStructIBlock(),
+				"IBLOCK_SECTION_ID" => $this->bx->findIDBy('CODE',$this->getParent($id)),
+				"NAME" => $this->getItemField($id,'Orgtx'),
+				"CODE" => $id
+				);
 	}
 	
 	/*
@@ -194,14 +145,6 @@ class CSQLOrgStructure extends COrgStructureStorage{
 		}
 		
 		return $reverse;
-	}
-
-	public function rwcount($id) {
-		$rwcount=$this->getItemField($id,'wcount',0);;
-		foreach ($this->getChilds($id) as $child) {
-			$rwcount+=$this->getItemField($child,'wcount',0);
-		}
-		return $rwcount;
 	}
 }
 
