@@ -7,14 +7,23 @@
 | Полное имя       	| Ename        	| ФИО               	| Ename   	|                      	| cn, name, displayName 	|
 | Фамилия          	|              	|                   	| Nachn   	| LAST_NAME            	| sn                    	|
 | Имя              	|              	|                   	| Vorna   	| NAME                 	| givenName             	|
-| Отчество         	|              	|                   	| Midnm   	| SECOND_NAME  (не исп) 	|                       	|
+| Отчество         	|              	|                   	| Midnm   	| SECOND_NAME (не исп) 	|                       	|
 | Табельный номер  	| employee_id  	| Табельный         	| Pernr   	| XML_ID (2nd token)   	| EmplyeeNumber         	|
 | ИД Организации   	| org_id       	|                   	|         	| XML_ID (1st token)   	| EmployeeID            	|
 | Название орг     	| через org_id 	|                   	|         	| WORK_COMPANY         	| company               	|
-| id Подразделения 	| Orgeh        	| Код подразделения 	| Orgeh   	| WORK_DEPARTMENT      	| department            	|
+| Подразделение    	| через Orgeh  	|                   	| Orgtx   	| WORK_DEPARTMENT      	| department            	|
+| id Подразделения 	| Orgeh        	| Код подразделения 	| Orgeh   	| UF_DEPARTMENT        	|                       	|
 | Должность        	| Dojnost      	|                   	| Dojnost 	| WORK_POSITION        	| title                 	|
-|                  	|              	|                   	|         	|                      	|                       	|
-|                  	|              	|                   	|         	|                      	|                       	|
+| Тип трудоустр.   	| Persg        	| ВидЗанятости      	| Persg   	|                      	|                       	|
+| Дата приема      	| employ_date  	| ДатаПриема        	|         	|                      	|                       	|
+| Дата увольнения  	| resign_date  	| ДатаУвольнения    	|         	|                      	|                       	|
+| Уволен           	| Uvolen       	| Статус            	| Uvolen  	| ACTIVE               	|                       	|
+| Login            	| Login        	|                   	| Uname   	| хз. импорт из AD     	| sAMAccountname        	|
+| Email            	| Email        	|                   	|         	| хз. импорт из AD     	| mail                  	|
+| Внутренний тел   	| Phone        	|                   	|         	| хз. импорт из AD     	| pager                 	|
+| Мобильный        	| Mobile       	| Телефон           	|         	| хз. импорт из AD     	| mobile                	|
+| Городской рабоч  	| work_phone   	|                   	|         	| хз. импорт из AD     	| telephoneNumber       	|
+| День. рожд       	| Bday         	| Дата рождения     	| Gbdat   	| PERSONAL_BIRTHDAY    	|                       	|
 
 Содержит срипты для следующих направлени синхронизации:
 ## Внешняя БД -> инвентаризация  
