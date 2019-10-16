@@ -1,6 +1,21 @@
 # SAP-Inventory-sync
 Скрипты синхронзации Инвентаризации с внешними БД
 
+## Синхронизируемые данные
+| Поле             	| В БД инв.    	| 1С                	| SAP     	| Bitrix               	| AD                    	|
+|------------------	|--------------	|-------------------	|---------	|----------------------	|-----------------------	|
+| Полное имя       	| Ename        	| ФИО               	| Ename   	|                      	| cn, name, displayName 	|
+| Фамилия          	|              	|                   	| Nachn   	| LAST_NAME            	| sn                    	|
+| Имя              	|              	|                   	| Vorna   	| NAME                 	| givenName             	|
+| Отчество         	|              	|                   	| Midnm   	| SECOND_NAME  (не исп) 	|                       	|
+| Табельный номер  	| employee_id  	| Табельный         	| Pernr   	| XML_ID (2nd token)   	| EmplyeeNumber         	|
+| ИД Организации   	| org_id       	|                   	|         	| XML_ID (1st token)   	| EmployeeID            	|
+| Название орг     	| через org_id 	|                   	|         	| WORK_COMPANY         	| company               	|
+| id Подразделения 	| Orgeh        	| Код подразделения 	| Orgeh   	| WORK_DEPARTMENT      	| department            	|
+| Должность        	| Dojnost      	|                   	| Dojnost 	| WORK_POSITION        	| title                 	|
+|                  	|              	|                   	|         	|                      	|                       	|
+|                  	|              	|                   	|         	|                      	|                       	|
+
 Содержит срипты для следующих направлени синхронизации:
 ## Внешняя БД -> инвентаризация  
 В качестве внешней БД использовались 1С и SAP.  
