@@ -1,7 +1,7 @@
 #!/usr/bin/php
 <?php
 /*
- * Скрипт синхронизации портала с SAP
+ * Скрипт синхронизации оргструктуры и пользователей из БД инвентаризации -> Bitrix
  * выполняется из оболочки, а не через веб
  *
  * v1.5 - Добавлена работа с файлами (Загрузка фото)
@@ -20,120 +20,37 @@ require ($_SERVER ["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_befor
 // Будем работать с информационными блоками
 CModule::IncludeModule('iblock');
 
+//загружаем конфигурацию
 require_once "config.php";
-require_once "CBxOrgStructure.php";
-require_once "CBxUserList.php";
-require_once "CBxGroupList.php";
-require_once "CSapOrgStructure.php";
-require_once "CSapUserList.php";
-require_once "CSQLOrgStructure.php";
 
-require_once "CSQLUserList.php";
+//подключаем библиотеку с объектами
+require_once "libs/OrgStruct.php";
+require_once "libs/CBxGroupList.php";
+require_once "libs/CBxUserList.php";
+require_once "libs/CBxOrgStructure.php";
+
+//САП нам отдавал фотографии, а 1С не отдает. Потому обходим стороной эту область данных
 //require "CUserPhotos.php";
 
 echo date('c')." Script started\n";
-		
-echo "Initializing DataSource structure\n";
 
-//создаем объект оргструктуры
-switch ($dataSrc['org']['src']) {
-	case 'c1':
-		echo "C1 mode\n";
-		$sapOrg = new CC1OrgStructure();
-		break;
-	case 'sap':
-		echo "SAP mode\n";
-		$sapOrg = new CSapOrgStructure();
-		break;
-	case 'sql':
-		echo "SQL mode\n";
-		$sapOrg = new CSQLOrgStructure();
-		break;
-	default:
-		die('Unknown org data source');
-		break;
-}
 
-echo "Loading DataSource structure\n";
-//грузим
-switch ($dataSrc['org']['ftype']) {
-	case 'csv':
-		$sapOrg->loadFromCsv($dataSrc['org']['path']);
-		break;
-	case 'json':
-		$sapOrg->loadFromJson($dataSrc['org']['path']);
-		break;
-	case 'xml':
-		$sapOrg->loadFromXml($dataSrc['org']['path']);
-		break;
-	case 'sql':
-		$sapOrg->loadFromSQL(
-			$dataSrc['org']['path'][0],
-			$dataSrc['org']['path'][1],
-			$dataSrc['org']['path'][2],
-			$dataSrc['org']['path'][3]
-        );
-		break;
-	default:
-		die('Unknown org file type');
-		break;
-}
+$dataSrc=$dataSrc_inv_yml;
+$sapOrg=initOrgStructure($dataSrc);
+$sapUsers=initUserList($dataSrc);
+$org_id=$dataSrc['org_id'];
 
-echo "Initializing DataSource userlist\n";
-//создаем объект списка пользователей
-switch ($dataSrc['usr']['src']) {
-	case 'c1':
-		echo "C1 mode\n";
-		$sapUsers = new CC1UserList();
-		break;
-	case 'sap':
-		echo "SAP mode\n";
-		$sapUsers = new CSapUserList();
-		break;
-	case 'sql':
-		echo "SQL mode\n";
-		$sapUsers = new CSQLUserList();
-		break;
-	default:
-		die('Unknown usr data source');
-		break;
-}
-
-echo "Loading DataSource userlist\n";
-//грузим
-switch ($dataSrc['usr']['ftype']) {
-	case 'csv':
-		$sapUsers->loadFromCsv($dataSrc['usr']['path']);
-		break;
-	case 'json':
-		$sapUsers->loadFromJson($dataSrc['usr']['path']);
-		break;
-	case 'xml':
-		$sapUsers->loadFromXml($dataSrc['usr']['path']);
-		break;
-	case 'sql':
-		$sapUsers->loadFromSQL(
-			$dataSrc['org']['path'][0],
-			$dataSrc['org']['path'][1],
-			$dataSrc['org']['path'][2],
-			$dataSrc['org']['path'][3]
-		);
-		break;
-	default:
-		die('Unknown usr file type');
-		break;
-}
-
+//включаем вывод всех ошибок
+//error_reporting(E_ALL);
 
 echo "Initializing BX structure\n";
 $bxOrg= new CBxOrgStructure();
 
 echo "Initializing BX groups\n";
-//включаем вывод всех ошибок
-//error_reporting(E_ALL);
 $bxGrp = new CBxGroupList ();
 $bxUsers = new CBxUserList();
 
+//подключаем базы друг к другу
 $sapOrg->attachBx($bxOrg);
 $sapUsers->attachBxOrg($bxOrg);
 $sapUsers->attachSapOrg($sapOrg);

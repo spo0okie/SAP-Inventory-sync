@@ -1,25 +1,26 @@
 #!/usr/bin/php
 <?php
 /*
- * Скрипт синхронизации базы пользователей инвенторизации с САП
+ * Скрипт синхронизации базы пользователей SAP -> Инвенторизация
  * выполняется из оболочки, а не через веб
  *
- * Конкретно этот скрипт выполняет одностороннюю синхронизацию данных из 1С/SAP в Инвентаризацию
- * 
+ * v1.1 - инициализация вынесена в библиотеку
  * v1.0 - Initial
  */
-
-require "CC1OrgStructure.php";
 
 //включаем вывод всех ошибок
 error_reporting(E_WARNING||E_ALL);
 
 
-
 echo date('c')." Script started\n";
+
+//загружаем конфигурацию
 require_once "config.php";
+
+//подключаем библиотеку с объектами
 require_once "libs/OrgStruct.php";
 
+//выбираем из конфигурации источник данных
 $dataSrc=$dataSrc_1c_yml;
 $sapOrg=initOrgStructure($dataSrc);
 $sapUsers=initUserList($dataSrc);
@@ -39,6 +40,7 @@ $req_obj = $db->query($req_sql);
 $sync_errors=0;
 
 
+//грузим оргструткуру
 foreach ($sapOrg->getIds() as $sapID) {
 	$id=$sapOrg->getItemField($sapID,'Objid');
 	$name=$sapOrg->getItemField($sapID,'Orgtx');
@@ -83,8 +85,10 @@ foreach ($sapUsers->getIds() as $id) {
 	        ) continue;
 	*/
 
+	//это специфика выгрузки из 1С
 	$dismissed=(strlen($item['Uvolen'])&&$item['Uvolen']=='Уволен')?1:0;
 
+	//ищем пользователя с этим табельным в этой организации
 	$id=null;
 	$id_obj=$db->query("select id from users where employee_id='${item['Pernr']}' and org_id=$org_id;");
 
@@ -93,6 +97,8 @@ foreach ($sapUsers->getIds() as $id) {
 		if (is_array($res)&&isset($res['id']))
 		    $id=$res['id'];
     }
+
+    //не нашли - добавляем
     if (is_null($id))
 	    $req_sql="insert into ".
         "users (org_id,employee_id,Orgeh,Doljnost,Ename,Uvolen,Bday,Mobile,Persg,employ_date,resign_date) ".
@@ -109,7 +115,7 @@ foreach ($sapUsers->getIds() as $id) {
 		    "'${item['Employ_date']}',".//начало трудоустройства
 		    "'${item['Resign_date']}'". //окончание
         ")";
-	else $req_sql="update users ".
+	else $req_sql="update users ".  //иначе обновляем
         "set ".
             "Orgeh='${item['Orgeh']}',".
             "Doljnost='${item['Doljnost']}',".

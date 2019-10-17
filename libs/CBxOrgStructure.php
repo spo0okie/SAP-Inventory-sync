@@ -99,8 +99,10 @@ class CBxOrgStructure extends COrgStructureStorage {
 	public function addItem($params){
 		//почистим
 		$params=CbxOrgStructure::cleanParams($params);
-		
-		//echo "Adding ".print_r($params,true)."\n";
+
+		//debug
+		echo "Adding ".print_r($params,true)."\n";
+		//exit();
 		
 		//добавляем через АПИ битрикса
 		$bs = new CIBlockSection;

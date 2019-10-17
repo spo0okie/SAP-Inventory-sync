@@ -73,7 +73,7 @@ class CSQLUserList extends COrgStructureStorage {
 		$last_name=$nametokens[0];
 		unset($nametokens[0]);
 		$name=implode(' ',$nametokens);
-		$code=$this->getItemField($id,'Orgeh');
+		$code=$this->getItemField($id,'org_id').'_'.$this->getItemField($id,'Orgeh');
 		//echo "code $last_name | $name \n";
 		$department=$this->bxOrg->findIdBy('CODE',$code);
 		//echo "department $department\n";

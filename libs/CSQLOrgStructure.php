@@ -48,6 +48,12 @@ class CSQLOrgStructure extends COrgStructureStorage{
 	 */
 	public function loadFromSQL($path,$user,$pwd,$db){
 		$this->db = new mysqli($path,$user,$pwd,$db);
+		/* проверка соединения */
+		if ($this->db->connect_errno) {
+			printf("Не удалось подключиться: %s\n", $this->db->connect_error);
+			exit();
+		}
+
 		$req_sql = 'set names "utf8"';
 		$this->db->query($req_sql);
 
@@ -67,9 +73,12 @@ class CSQLOrgStructure extends COrgStructureStorage{
 				$wcount_arr=$wcount_obj->fetch_assoc();
 				if (is_array($wcount_arr)&&isset($wcount_arr['wcount'])) $res['wcount']=$wcount_arr['wcount'];
 			}
-			$this->data[$res['org_id']][$res['id']]=$res;
+			$this->data[$res['org_id'].'_'.$res['id']]=$res;
+		} else {
+			//printf("Ошибка: %s\n", );
+			die($this->db->error);
 		}
-		//echo count($this->data)." items loaded in SQL Org storage\n";
+		echo count($this->data)." items loaded in SQL Org storage\n";
 		//var_dump($this->data);
 		return is_array($this->data);
 	}
@@ -81,7 +90,9 @@ class CSQLOrgStructure extends COrgStructureStorage{
 	 * @return string идентификатор родтельского для $id элемента или null, если родителя нет
 	 */
 	public function getParent($id){
-		return $this->getItemField($id,'pup',null);
+		$pup=$this->getItemField($id,'pup',null);
+		if (is_null($pup)) return null;
+		return $this->getItemField($id,'org_id','NULL').'_'.$pup;
 	}
 
 	/*
@@ -108,12 +119,19 @@ class CSQLOrgStructure extends COrgStructureStorage{
 		
 		//если уже проверен - значит все ок
 		if (!is_null($res=$this->getItemField($id,'bx_item_id'))) return $res;
-		
+
+		$org_id=$this->getItemField($id,'bx_item_id',1);
+
 		//если есть предок - проверяем сначала его, ибо проверять можно только от корня
 		if (!is_null($parent=$this->getParent($id)))
 			//если предок установлен в 'NULL' то мы его не проверяем, т.к. это указание на корень
+			//тут вы вероятно спросите, а что за NULL, откуда взялся. А берется он прямо из SQL таблицы
+			//а в нее кладется при загрузке из САП/1С, т.к. там отдается ровно в таком виде
+			//поскольку оргуструктуры организаций не могут быть связаны то проверяем соответствие с той же
+			//что и у потомка
+
 			if (
-				$parent!='NULL'
+				$parent!="{$org_id}_NULL"
 				&&
 				!$this->ckBxItemExist($parent)
 			)  {
@@ -145,12 +163,14 @@ class CSQLOrgStructure extends COrgStructureStorage{
 		
 		//если уже проверен - значит все ок
 		if ($this->getItemField($id,'checked_bxfields_ok')) return true;
-		
+
+		$org_id=$this->getItemField($id,'bx_item_id',1);
+
 		//если есть предок - проверяем сначала его, ибо проверять можно только от корня
 		if (!is_null($parent=$this->getParent($id))) {
 			//если предок установлен в 'NULL' то мы его не проверяем, т.к. это указание на корень
 			if (
-				$parent!='NULL'
+				$parent!="{$org_id}_NULL"
 				&&
 				!$this->ckBxItemFields($parent)
 			) {
