@@ -1,8 +1,10 @@
 <?php
 /*
- * 2018.09.21 У битрикса есть особенность - один корневой элемент оргструктуры
+ * 2019.09.21 У битрикса есть особенность - один корневой элемент оргструктуры
  * в Азимуте с этим проблем не было, а тут появились
  *
+ * 2019.12.17 В Азимуте не было и Тут нет, потому что в азимуте изначально корень был "Организации" и потом
+ * уже оргструктуры каждого завода
  */
 
 require_once "COrgStructureStorage.php";
@@ -13,7 +15,7 @@ class CBxOrgStructure extends COrgStructureStorage {
 	 * Вроде как оно всегда "Подразделения"
 	 */
 	public static $StructIBlckName='Подразделения';
-	
+
 	/*
 	 * Идентификатор информационного блока "Подразделения",
 	 * изначально не определен, используется как кэш запроса
@@ -128,7 +130,7 @@ class CBxOrgStructure extends COrgStructureStorage {
 		//почистим
 		$arFields=static::cleanParams($arFields);
 		
-		//echo "Updating $id with ".print_r($arFields,true)."\n";
+		echo "Updating $id with ".print_r($arFields,true)."\n";
 		
 		//пишем
 		$bs = new CIblockSection();
