@@ -18,7 +18,7 @@ require_once 'COrgStructureStorage.php';
  * Класс для взаимодействия структурой из САП
  * в контексте этого скритпа - данные САП опорные, и только для чтения
  */
-class CSQLOrgStructure extends COrgStructureStorage{
+class CSQLOrgStructure extends COrgStructureStorage {
 
 	private $db=null;
 
@@ -164,13 +164,13 @@ class CSQLOrgStructure extends COrgStructureStorage{
 		//если уже проверен - значит все ок
 		if ($this->getItemField($id,'checked_bxfields_ok')) return true;
 
-		$org_id=$this->getItemField($id,'bx_item_id',1);
+		$org_id=$this->getItemField($id,'org_id',1);
 
 		//если есть предок - проверяем сначала его, ибо проверять можно только от корня
 		if (!is_null($parent=$this->getParent($id))) {
 			//если предок установлен в 'NULL' то мы его не проверяем, т.к. это указание на корень
 			if (
-				$parent!="{$org_id}_NULL"
+				strcmp($parent,"{$org_id}_NULL")
 				&&
 				!$this->ckBxItemFields($parent)
 			) {
@@ -183,6 +183,7 @@ class CSQLOrgStructure extends COrgStructureStorage{
 		if (is_null($bxID = $this->ckBxItemExist($id))) return false;
 
 		//var_dump($this->bxGenFields($id));
+		//var_dump($this);
 		//die('correcting fields');
 		//возвращаем и кэшируем проверку (с учетом попытки исправления) полей в битриксе
 		return $this->data[$id]['checked_bxfields_ok']=$this->bx->correctItem($bxID, $this->bxGenFields($id));
