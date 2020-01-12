@@ -15,13 +15,15 @@
 // Подключаем битрикс фреймворк
 define("NO_KEEP_STATISTIC", true);
 define("NOT_CHECK_PERMISSIONS", true);
-$_SERVER ["DOCUMENT_ROOT"] = '/home/bitrix/www';
+
+//загружаем конфигурацию
+require_once "config.php";
+
+$_SERVER ["DOCUMENT_ROOT"] = $bitrix_root;
 require ($_SERVER ["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_before.php");
 // Будем работать с информационными блоками
 CModule::IncludeModule('iblock');
 
-//загружаем конфигурацию
-require_once "config.php";
 
 //подключаем библиотеку с объектами
 require_once "libs/OrgStruct.php";
@@ -44,11 +46,12 @@ $org_id=$dataSrc['org_id'];
 //error_reporting(E_ALL);
 
 echo "Initializing BX structure\n";
-$bxOrg= new CBxOrgStructure();
+$bxOrg= new CBxOrgStructure($orgNames);
 
 echo "Initializing BX groups\n";
 $bxGrp = new CBxGroupList ();
 $bxUsers = new CBxUserList();
+var_dump($bxUsers);
 
 //подключаем базы друг к другу
 $sapOrg->attachBx($bxOrg);
@@ -68,11 +71,11 @@ foreach ( $grpListAll as $grp )
 		die ( "Can't find group $grp" );
 		
 //ищем идентификаторы групп в которые включить менеджеров
-/*
+
 foreach ( $grpListManagers as $grp )
 	if (is_null ( $grpListManagers_id [] = $bxGrp->findIdBy ( 'NAME', $grp ) ))
 		die ( "Can't find group $grp" );
-*/
+
 
 /*
 //вывод всех груп с ингдексами		 (просто для информации)
@@ -89,8 +92,17 @@ echo "Checking structure\n";
  * в соответствии с SAP. недостающие подразделения добавляются. Идентификация подразделения
  * производится по полю CODE со стороны Битрикс и Objid со стороны SAP
  */
-foreach ($sapOrg->getIds() as $sapID) if ($sapOrg->getItemField($sapID,'wcount',0)) {
-	echo $sapID.': '.($sapOrg->ckBxItemFields($sapID)?'OK':'Err')."\n";
+foreach ($sapOrg->getIds() as $sapID) {
+    $unitName=$sapOrg->getItemField($sapID,'name',0);
+	$wcount=$sapOrg->getItemField($sapID,'wcount',0);
+
+	echo "$sapID ($unitName): $wcount users : ";
+    if ($wcount) {
+		echo $sapOrg->ckBxItemFields($sapID)?'OK':'Err';
+	} else {
+	    echo "Empty";
+    }
+    echo "\n";
 	ob_flush();
 }
 
@@ -102,8 +114,12 @@ echo "Checking users\n";
 foreach ($bxUsers->getIds() as $bxID) {
 	$prefx=str_pad($bxID,5).' <bx: '.str_pad($bxUsers->getItemField($bxID,'LOGIN'),20).":sap> ";
 
-	//ищем пользователя в сап
-	if (!($sapID=$bxUsers->getSapID($bxID))) {
+
+	//ищем пользователя в САП по e-mail
+	if (!($sapID=$sapUsers->findIdBy('Email',$bxUsers->getItemField($bxID,'EMAIL')))) {
+
+	//ищем пользователя в сап по ID
+	//if (!($sapID=$bxUsers->getSapID($bxID))) {
 		/* 
 		 * Нет такого пользователя
 		 * если он активирован с портале - отключаем
@@ -113,11 +129,13 @@ foreach ($bxUsers->getIds() as $bxID) {
 		//echo '?';ob_flush();
 		if ($bxUsers->getItemField($bxID,'ACTIVE')=='Y') {
 			echo $prefx."No SAP ID ($sapID) - Deactivating...\n";
-			$bxUsers->updItem($bxID,['ACTIVE'=>'N']);
+			$bxUsers->updItem($bxID,['ACTIVE'=>'N','XML_ID'=>'']);
 		}
 		
 		continue; //пропускаем всех кого в сапе нет
-	} 
+	}
+
+
 	
 	/*
 	 * Если пользователь в сап есть, то проверяется соответствие полей
@@ -150,14 +168,15 @@ foreach ($bxUsers->getIds() as $bxID) {
 	/*
 	 * Работа с фотографиями
 	 */
-/*    $userPhoto = new CUserPhotoStruct();
+    /*
+    $userPhoto = new CUserPhotoStruct();
     $userPhoto->loadFromJson("http://zabbix.azimut-gk.local:8080/sapProxy.php?req=YfmGetPersPhoto&IPernr=$sapID");
     $photoStatus='missing'; //по умолчанию считаем что фото нет
     if (($sapPhotoTStamp=$userPhoto->getTimeStamp())>0) {
         //тут мы выяснили что в сапе есть данные по фотографии сотрудника
         $userPhoto->loadBxData($bxID);
         if (strcmp($userPhoto->getBxFilename(),$userPhoto->getSapFilename($sapID))) {
-	        $userPhoto->updateBxData($sapID,$bxID);
+            $userPhoto->updateBxData($sapID,$bxID);
             $photoStatus='updated ';
         } else {
             $photoStatus='same';
@@ -165,14 +184,11 @@ foreach ($bxUsers->getIds() as $bxID) {
     }
     unset($userPhoto);
     $prefx.= 'Photo - '.str_pad($photoStatus,8).'  ';
-
-	//echo '5';	ob_flush();
-
-
     */
+
     //проверяем наличие пользователя в группах для руководителей
 	//пробегаемся по ключевым словам должностей руководителей и ищем их в должности обрабатываемого пользователя
-	/*$manager=false;
+	$manager=false;
 	foreach ($managersTitles as $title)	if (false!==strpos(mb_strtolower($bxUsers->getItemField($bxID, 'WORK_POSITION')),$title)) 
 		$manager=true;
 	if ($manager) 
@@ -182,7 +198,7 @@ foreach ($bxUsers->getIds() as $bxID) {
 	$prefx.=str_pad($mgr_prfx,18);
 
 	//echo '6';ob_flush();
-    */
+
 	//выводим подразделение	
 	$prefx.='Dep: '.str_pad($bxUsers->getItemField($bxID,'UF_DEPARTMENT')[0],6);
 
@@ -197,7 +213,7 @@ foreach ($bxUsers->getIds() as $bxID) {
 	//ob_flush();
 
 	//если обнаружены дубликаты пользователя - сообщаем об этом (возникают при импорте с разных доменов)
-	//if (count($dupes=$bxUsers->findDupes($bxID))&&($dupes[0]>$bxID)) echo ' Dupes found ['.	implode(',',$dupes).'] ';
+	if (count($dupes=$bxUsers->findDupes($bxID))&&($dupes[0]>$bxID)) echo ' Dupes found ['.	implode(',',$dupes).'] ';
 
 	
 	echo "\n";
