@@ -93,6 +93,7 @@ class CSapUserList extends COrgStructureStorage {
 		$this->data=COrgStructureStorage::loadFromXml($filename,'OPersonal','Pernr');
 		//echo count($this->data)." items loaded in SAP User storage\n";
 		//var_dump($this->data);
+		$this->buildExFieldsAll();
 		return is_array($this->data);
 	}
 
@@ -107,6 +108,7 @@ class CSapUserList extends COrgStructureStorage {
 		$this->data=COrgStructureStorage::loadFromJson($filename,'OPersonal','Pernr');
 		//echo count($this->data)." items loaded in SAP User storage\n";
 		//var_dump($this->data);
+		$this->buildExFieldsAll();
 		return is_array($this->data);
 	}
 	
@@ -191,6 +193,10 @@ class CSapUserList extends COrgStructureStorage {
 	 */
 	function buildExFields($id) {
 		if (is_null($id)) return false;
+		//создаем поля даты приема и увольнения, т.к. они в скриптах исользются не с этими именами
+		if (!isset($this->data[$id]['employ_date']) && isset($this->data[$id]['DatePrin'])) $this->data[$id]['employ_date'] = $this->data[$id]['DatePrin'];
+		if (!isset($this->data[$id]['resign_date']) && isset($this->data[$id]['DateUvol'])) $this->data[$id]['resign_date'] = $this->data[$id]['DateUvol'];
+
 		//для подстраховки записываем сначла название завода
 		$this->data[$id]['Organization']=$this->getItemField($id, 'NameF');
 		if (!isset($this->orgDict)) return false; //нет словаря завод=>организация
@@ -205,7 +211,7 @@ class CSapUserList extends COrgStructureStorage {
 	/*
 	 * Добавляет дополниетльные вычисляемые поля всем пользователям
 	 */
-	function buildExFieldsAll() {
+	public function buildExFieldsAll() {
 		foreach ($this->getIds() as $id) $this->buildExFields($id);
 	}
 	
