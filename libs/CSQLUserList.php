@@ -76,6 +76,7 @@ class CSQLUserList extends COrgStructureStorage {
 		$code=$this->getItemField($id,'org_id').'_'.$this->getItemField($id,'Orgeh');
 		//echo "code $last_name | $name \n";
 		$department=$this->bxOrg->findIdBy('CODE',$code);
+		if (!$department) $department=$this->bxOrg->findIdBy('CODE',$this->getItemField($id,'org_id').'_NULL');
 		//echo "department $department\n";
 		$depname=$this->sapOrg->getItemField($code,'name');
 		$bday=($this->getItemField($id,'Bday')=='0000-00-00')?NULL:date('d.m.Y',strtotime($this->getItemField($id,'Bday')));
