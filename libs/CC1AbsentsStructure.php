@@ -69,6 +69,8 @@
  */
 class CC1AbsentsStructure extends COrgStructureStorage {
 
+	public $org_id=1;
+
 	private static $csvFields=[
 		'Objid',        //id
 		'Pernr',        //Табельный
@@ -195,17 +197,37 @@ class CC1AbsentsStructure extends COrgStructureStorage {
 	 */
 	public function bxGenFields($id){
 		//ищем пользователя битрикс с табельным номером Pernr
+
+		//тут у нас изменения. с того момента, как мы поддерживаем несколько организаций
+		//у нас в XML_ID не пишется табельник, а пишется ИД польлзователя в инвентаризации
+		//потому нам еще надо выяснить а какой XML-ID искать. Для этого ищем юзера по org_id и pernr
+
+		$user_num=$this->getItemField($id,'Pernr'); //Табельный
+		global $inventory_API_url;
+
+		//делаем запрос в инвентаризацию по юзеру с таким табельным в такой организации
+		$search_url="{$inventory_API_url}/users/view?num={$user_num}&org={$this->org_id}";
+		$api_response=file_get_contents($search_url);
+		//если ответ невалидный json, значит неудача
+		if (is_null($json=json_decode($api_response,true))) return false;
+		//нету ИД - непонятно что искать в битриксе
+		if (!isset($json['id'])) return false;
+		$xml_id=$json['id'];
+		//echo "$xml_id\n";
 		//получаем список всех с этим табельным номером (на самом деле 1 или 0)
 		$users=CUser::GetList(
 			$by='id',
 			$order='desc',
 			[
-				'ACTIVE'=>Y,
-				'XML_ID'=>$this->getItemField($id,'Pernr')
+				'ACTIVE'=>'Y',
+				'XML_ID'=>$xml_id
 			]
 		);
 		//выбираем первого из списка
-		if (!($user=$users->GetNext())) return false;
+		if (!($user=$users->GetNext())) {
+			//echo "-\n";
+			return false;
+		};// else echo "+\n";
 		//echo $this->getItemField($id,'Awart')."\n";
 		//echo static::absDescrFromSap($this->getItemField($id,'Awart'))."\n";
 
