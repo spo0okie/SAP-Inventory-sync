@@ -189,10 +189,15 @@ class CBxUserList extends COrgStructureStorage {
 	 * Ищем объект в сапе по имени
 	 */
 	public function getSapID($id){
+		//пробуем выдернуть по логину
+		$login=$this->getItemField($id,'LOGIN');
+		if (!is_null($sapID=$this->sap->findIdBy('Login',$login))) return $sapID;
+		//echo "Find by $login failed with $sapID\n";
+
+
 		//если внутри пользователя записан его номер сотрудника и по нему он ищется - то его и вернем
-		//echo 'a'; ob_flush();
 		if (!is_null($sapID=$this->getItemField($id,'XML_ID'))&&($this->sap->exist($sapID))) return $sapID;
-		
+
 		//ищем сначала по ФИО
 		//echo $this->getItemField($id,'LAST_NAME').' '.$this->getItemField($id,'NAME'); ob_flush();
 		try {
