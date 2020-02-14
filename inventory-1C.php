@@ -30,7 +30,7 @@ $db = new mysqli(
 $req_sql = 'set names "utf8"';
 $req_obj = $db->query($req_sql);
 
-foreach ($inventory_import as $dataSrc) {
+foreach ($inventory_import['sources'] as $dataSrc) {
 	//выбираем из конфигурации источник данных
 	//$dataSrc=$dataSrc_1c_gmn;
 	$sapOrg=initOrgStructure($dataSrc);
@@ -104,34 +104,35 @@ foreach ($inventory_import as $dataSrc) {
 		}
 
 		//не нашли - добавляем
+        $fields=[
+	        'Orgeh'     =>  "'${item['Orgeh']}'",
+	        'Doljnost'  =>  "'${item['Doljnost']}'",
+	        'Ename'     =>  "'${item['Ename']}'",
+	        'Bday'      =>  "'${item['Bday']}'",
+	        'Mobile'    =>  "'${item['Mobile']}'",
+	        'Persg'     =>  $item['Persg'],
+	        'employ_date'=> "'${item['Employ_date']}'",
+	        'resign_date'=> "'${item['Resign_date']}'",
+	        'Uvolen'    =>  $dismissed,
+        ];
+
+		foreach ($fields as $filed=>$value) if (array_search($field,$inventory_import['fields'])===false) unset ($fields[$field]);
+
+		//список полей для инсерта
+		$insert_fields=implode(',',array_keys($fields));
+		//список значений
+		$insert_values=implode(',',$fields);
+
+		//код для апдейта полей
+		$update_fields=[];
+		foreach ($fields as $field=>$value) $update_fields[]="$field=$value";
+		$update_code=implode(',',$update_fields);
+
 		if (is_null($id))
-			$req_sql="insert into ".
-        	"users (org_id,employee_id,Orgeh,Doljnost,Ename,Uvolen,Bday,Mobile,Persg,employ_date,resign_date) ".
-			"values (".
-			    "$org_id,".                 //организация
-			    "'${item['Pernr']}',".      //табельный номер
-			    "'${item['Orgeh']}',".      //ссылка на подразделение
-			    "'${item['Doljnost']}',".   //должность
-			    "'${item['Ename']}',".      //ФИО
-    			"$dismissed,".              //уволен
-    			"'${item['Bday']}',".       //д.р.
-			    "'${item['Mobile']}',".     //мобилный
-			    "${item['Persg']},".        //трудоустройство
-			    "'${item['Employ_date']}',".//начало трудоустройства
-		    	"'${item['Resign_date']}'". //окончание
-	        ")";
-		else $req_sql="update users ".  //иначе обновляем
-        	"set ".
-            	"Orgeh='${item['Orgeh']}',".
-	            "Doljnost='${item['Doljnost']}',".
-    	        "Ename='${item['Ename']}',".
-    			"Bday='${item['Bday']}',".
-    			"Mobile='${item['Mobile']}',".
-	    		"Persg=${item['Persg']},".
-    			"employ_date='${item['Employ_date']}',".
-	    		"resign_date='${item['Resign_date']}',".
-            	"Uvolen=$dismissed ".
-	        "where id='$id'";
+			$req_sql="insert into users ($insert_fields) values (${org_id},'${item['Pernr']}',$insert_values)";
+		else
+		    $req_sql="update users set $update_code where id='$id'";
+
 		if (!$nosync) {
 			if ($db->query($req_sql)===false){
 				echo "Error:REQ: $req_sql\n";

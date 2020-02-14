@@ -194,8 +194,10 @@ class CSapUserList extends COrgStructureStorage {
 	function buildExFields($id) {
 		if (is_null($id)) return false;
 		//создаем поля даты приема и увольнения, т.к. они в скриптах исользются не с этими именами
-		if (!isset($this->data[$id]['employ_date']) && isset($this->data[$id]['DatePrin'])) $this->data[$id]['employ_date'] = $this->data[$id]['DatePrin'];
-		if (!isset($this->data[$id]['resign_date']) && isset($this->data[$id]['DateUvol'])) $this->data[$id]['resign_date'] = $this->data[$id]['DateUvol'];
+		if (!isset($this->data[$id]['Employ_date']) && isset($this->data[$id]['DatePrin'])) $this->data[$id]['Employ_date'] = $this->data[$id]['DatePrin'];
+		if (!isset($this->data[$id]['Resign_date']) && isset($this->data[$id]['DateUvol'])) $this->data[$id]['Resign_date'] = $this->data[$id]['DateUvol'];
+		if (strcmp($this->data[$id]['Uvolen'],'Х')==0) $this->data[$id]['Uvolen']='Уволен'; //Русская Ха
+		if (strcmp($this->data[$id]['Uvolen'],'X')==0) $this->data[$id]['Uvolen']='Уволен'; //Английский Икс
 
 		//для подстраховки записываем сначла название завода
 		$this->data[$id]['Organization']=$this->getItemField($id, 'NameF');
