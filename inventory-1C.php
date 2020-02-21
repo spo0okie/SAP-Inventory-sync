@@ -31,15 +31,18 @@ $req_sql = 'set names "utf8"';
 $req_obj = $db->query($req_sql);
 
 foreach ($inventory_import['sources'] as $dataSrc) {
+	echo "_iterating source\n\n";
 	//выбираем из конфигурации источник данных
 	//$dataSrc=$dataSrc_1c_gmn;
 	$sapOrg=initOrgStructure($dataSrc);
+	echo count($sapOrg->getIds())." objects loaded\n";
 	$sapUsers=initUserList($dataSrc);
+	echo count($sapUsers->getIds())." objects loaded\n";
 	$org_id=$dataSrc['org_id'];
 
 	$sync_errors=0;
 
-
+	echo "syncing org ...\n";
 	//грузим оргструткуру
 	foreach ($sapOrg->getIds() as $sapID) {
 		$id=$sapOrg->getItemField($sapID,'Objid');
@@ -55,46 +58,32 @@ foreach ($inventory_import['sources'] as $dataSrc) {
 			") on duplicate key update ".
 				"pup='$pup',".
 				"name='$name';";
-		if ($db->query($req_sql)===false){
-			echo "Error:REQ: $req_sql\n";
-			$sync_errors++;
+		if (!$inventory_import['readonly_mode']) {
+			if ($db->query($req_sql) === false) {
+				echo "Error:REQ: $req_sql\n";
+				$sync_errors++;
+			}
+		} else {
+			echo "RO mode: $req_sql\n";
 		}
 	}
+	echo "org done ...\n";
 
 
-	/*
-	 * var_dump($sapUsers);
-	*/
-	/*
-	id
-	struct_id
-	struct_name
-	position
-	full_name
-	dismissed
-	login
-	*/
 
+	echo "syncing users ...\n";
 	foreach ($sapUsers->getIds() as $id) {
 		$item=$sapUsers->getItem($id);
-		/*
-		 if (
-	    	    $item['Persg']!=1
-	        &&
-	        	$item['Persg']!='Основное место работы'
-		        ) continue;
-		*/
 
 		//это специфика выгрузки из 1С
 		$dismissed=(strlen($item['Uvolen'])&&$item['Uvolen']=='Уволен')?1:0;
-
 		//ищем пользователя с этим табельным в этой организации
 		$id=null;
 		//считаем что синхронизиоваться по умолчанию он должен
-		$nosync=false;
 
 		$id_obj=$db->query("select id,nosync from users where employee_id='${item['Pernr']}' and org_id=$org_id;");
 
+		$nosync=false;
 		if (is_object($id_obj)) {
 			$res = $id_obj->fetch_assoc();
 			if (is_array($res)){
@@ -103,25 +92,30 @@ foreach ($inventory_import['sources'] as $dataSrc) {
 			}
 		}
 
-		//не нашли - добавляем
-        $fields=[
-	        'Orgeh'     =>  "'${item['Orgeh']}'",
-	        'Doljnost'  =>  "'${item['Doljnost']}'",
-	        'Ename'     =>  "'${item['Ename']}'",
-	        'Bday'      =>  "'${item['Bday']}'",
-	        'Mobile'    =>  "'${item['Mobile']}'",
-	        'Persg'     =>  $item['Persg'],
-	        'employ_date'=> "'${item['Employ_date']}'",
-	        'resign_date'=> "'${item['Resign_date']}'",
-	        'Uvolen'    =>  $dismissed,
-        ];
+		//формируем список полей
+		$fields=[
+			'Orgeh'		=>	"'${item['Orgeh']}'",
+			'Doljnost'	=>	"'${item['Doljnost']}'",
+			'Ename'		=>	"'${item['Ename']}'",
+			'Bday'		=>	"'${item['Bday']}'",
+			'Mobile'	=>	"'${item['Mobile']}'",
+			'Persg'		=>	$item['Persg'],
+			'employ_date'=>	"'${item['Employ_date']}'",
+			'resign_date'=> "'${item['Resign_date']}'",
+			'Uvolen'	=>	$dismissed,
+		];
 
-		foreach ($fields as $filed=>$value) if (array_search($field,$inventory_import['fields'])===false) unset ($fields[$field]);
+		foreach ($fields as $field=>$value) if (array_search($field,$inventory_import['fields'])===false) unset ($fields[$field]);
 
 		//список полей для инсерта
-		$insert_fields=implode(',',array_keys($fields));
+
+		$insert_fields=[];
 		//список значений
-		$insert_values=implode(',',$fields);
+		$insert_values=[];
+		foreach ($fields as $field => $value){
+			$insert_fields[]=$field;
+			$insert_values[]=$value;
+		};
 
 		//код для апдейта полей
 		$update_fields=[];
@@ -133,13 +127,16 @@ foreach ($inventory_import['sources'] as $dataSrc) {
 		else
 		    $req_sql="update users set $update_code where id='$id'";
 
-		if (!$nosync) {
-			if ($db->query($req_sql)===false){
-				echo "Error:REQ: $req_sql\n";
-				$sync_errors++;
-			}
-	    } else echo "Skip $id ${item['Pernr']}\n";
+		if (!$inventory_import['readonly_mode']) {
+			if (!$nosync) {
+				if ($db->query($req_sql)===false){
+					echo "Error:REQ: $req_sql\n";
+					$sync_errors++;
+				}
+			} else echo "Skip $id ${item['Pernr']}\n";
+		} else echo "RO mode: $req_sql\n";
 	}
+	echo "users done\n";
 
 	unset ($sapOrg);
 	unset ($saUsers);
