@@ -58,9 +58,8 @@ function loadDataSource($src, &$sapOrg) {
  */
 function initOrgStructure($dataSrc) {
 //создаем объект оргструктуры
+	echo "Initializing Org DataSource structure\n";
 	validateDataSource($dataSrc['org'],'[org]');
-
-	echo "Initializing DataSource structure\n";
 
 	switch ($dataSrc['org']['src']) {
 		case 'c1':
@@ -88,9 +87,9 @@ function initOrgStructure($dataSrc) {
  */
 function initUserList($dataSrc) {
 //создаем объект оргструктуры
+	echo "Initializing User DataSource structure\n";
 	validateDataSource($dataSrc['org'],'[usr]');
 
-	echo "Initializing DataSource structure\n";
 
 	switch ($dataSrc['usr']['src']) {
 		case 'c1':
