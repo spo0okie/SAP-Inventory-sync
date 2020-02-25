@@ -109,13 +109,9 @@ foreach ($inventory_import['sources'] as $dataSrc) {
 
 		//список полей для инсерта
 
-		$insert_fields=[];
+		$insert_fields=implode(',',array_keys($fields));
 		//список значений
-		$insert_values=[];
-		foreach ($fields as $field => $value){
-			$insert_fields[]=$field;
-			$insert_values[]=$value;
-		};
+		$insert_values=implode(',',$fields);
 
 		//код для апдейта полей
 		$update_fields=[];
@@ -123,7 +119,7 @@ foreach ($inventory_import['sources'] as $dataSrc) {
 		$update_code=implode(',',$update_fields);
 
 		if (is_null($id))
-			$req_sql="insert into users ($insert_fields) values (${org_id},'${item['Pernr']}',$insert_values)";
+			$req_sql="insert into users (org_id,employee_id,$insert_fields) values (${org_id},'${item['Pernr']}',$insert_values)";
 		else
 		    $req_sql="update users set $update_code where id='$id'";
 
